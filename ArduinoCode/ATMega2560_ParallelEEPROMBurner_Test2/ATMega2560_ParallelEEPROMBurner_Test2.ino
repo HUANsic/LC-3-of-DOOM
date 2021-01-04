@@ -1,11 +1,3 @@
-/*
-   the ports A,C displays the address (16-bit or 2x8-bit) and the ports F,K displays the data (16-bit or 2x8-bit)
-   (A->F, C->K)OR(AC->FK)
-
-   PORTL is the control port:
-   PBL7~0: CE0, CE1, OE0, OE1, WE0, WE1, NU, NU     (NU = not used)
-*/
-
 #define CE0 7
 #define CE1 6
 #define OE0 5
@@ -44,6 +36,8 @@ class CAT {
     }
 
     void write(uint16_t addr, uint16_t* arr, uint8_t num) {
+      Serial.print("start writing at ");
+      Serial.println(addr, HEX);
       setOutputEnable(0);
       setWriteEnable(0);
       setChipEnable(1);
@@ -58,7 +52,7 @@ class CAT {
         delayMicroseconds(20);
       }
 
-      delay(MAX_WRITE_CYCLE_TIME * 2);
+      delay(MAX_WRITE_CYCLE_TIME);
       setChipEnable(0);
     }
 
@@ -121,27 +115,71 @@ class CAT {
 
 CAT myCat;
 
-uint16_t arr[128], count = 0, data;
+uint16_t arr[128];
 
 void setup() {
   Serial.begin(57600);
   while (!Serial);
   myCat.init();
-  PORTL &= ~((1 << CE0) | (1 << CE1) | (1 << OE0) | (1 << OE1));
+  while (Serial.read() != -1);  // empty the buffer
 }
 
 void loop() {
-  PORTA = (uint8_t)count;
-  PORTC = (uint8_t)(count >> 8);
-  delay(1);
-  data = PINF & 0x00FF;
-  data|= PINK << 8;
-  Serial.print(count, HEX);
-  Serial.print("\t->");
-  Serial.println(data, HEX);
+  uint16_t address = 0, data[128], holder = 0, lastAddress;
+  uint8_t ch, dta[4], count128 = 0, count4 = 0;
 
-  count++;
-  if(!count){
-    while(1);
+  Serial.print("OK\n");
+
+  while (1) {
+    ch = Serial.read();
+
+    if (ch == -1)
+      continue;
+    if (((ch < 0x3A) && (ch > 0x2F))) {   // a hex number
+      address = address << 4;
+      address += ch - 0x30;     // update address (0 <= countDigit <= 3)
+      lastAddress = address;
+      continue;
+    } else if ((ch > 0x40) && (ch < 0x47)) {   // a hex number
+      address = address << 4;
+      address += ch - 55;     // update address (0 <= countDigit <= 3)
+      lastAddress = address;
+      continue;
+    }
+    if (ch == '\n') {   // a new line character
+      if (count4 != 0)
+        Serial.println(count4);
+      Serial.print("OK\n");
+      count4 = 0;
+      continue;
+    }
+    if (ch == '@') {    // .END character
+      myCat.write(lastAddress, data, count128);
+      count128 = 0;
+      address = 0;
+      lastAddress = 0;
+      continue;
+    }
+
+    if ( (ch > 0x59) && (ch < 0x70)) {
+      // a piece of encoded data
+      dta[count4] = ch;
+      count4++;
+      if (count4 == 4) {
+        count4 = 0;
+        holder = (dta[3] & 0x0F);
+        holder |= (dta[2] & 0x0F) << 4;
+        holder |= (dta[1] & 0x0F) << 8;
+        holder |= (dta[0] & 0x0F) << 12;
+        data[count128] = holder;
+        count128++;
+        address++;
+      }
+      if (address % 128 == 0 && count128 != 0) {
+        myCat.write(lastAddress, data, count128);
+        count128 = 0;
+        lastAddress = address;
+      }
+    }
   }
 }

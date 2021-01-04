@@ -110,7 +110,7 @@ CAT myCat;
 uint16_t zeros[128], count;
 
 void setup() {
-  Serial.begin(19200);
+  Serial.begin(57600);
   while(!Serial);
   Serial.println("Serial good");
   myCat.init();
@@ -121,19 +121,10 @@ void setup() {
   for(uint16_t i = 128; i > 127; i += 128){
     myCat.write(i, zeros, 128);
   }
-  PORTL &= ~((1 << CE0) | (1 << CE1) | (1 << OE0) | (1 << OE1));
+
+  Serial.println("Done!");
+  Serial.end();
 }
 
 void loop() {
-  PORTA = (uint8_t)count;
-  PORTC = (uint8_t)(count >> 8);
-  delay(1);
-  Serial.print(count, DEC);
-  Serial.print("->");
-  Serial.println(PINF + (PINK << 8), DEC);
-
-  count++;
-  if(!count){
-    while(1);
-  }
 }

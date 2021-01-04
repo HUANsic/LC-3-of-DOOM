@@ -136,12 +136,16 @@ class LC3Assembler(genAsmblr.Assembler):
                     if self.debug:
                         print(strList[0], strList[1])
                     raise genAsmblr.UnknownError(countLN)
+                if self.debug:
+                    print(PC)
             elif strList[0] == ".STRINGZ":
                 PC += self.pseudoCode(strList[0], strList[1])[1]
             elif strList[0] == ".ORIG":
                 PC = self.pseudoCode(strList[0], strList[1])[1]
             else:
                 PC += 1
+            if self.debug:
+                print(PC)
             thisLn = file.readline()
         file.close()
 

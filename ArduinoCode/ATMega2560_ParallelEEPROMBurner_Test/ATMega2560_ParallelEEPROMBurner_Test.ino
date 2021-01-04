@@ -38,9 +38,9 @@ class CAT {
       setChipEnable(1);
       delayMicroseconds(5);
       setWriteEnable(0);
-      setChipEnable(0);
 
       delay(MAX_WRITE_CYCLE_TIME);
+      setChipEnable(0);
     }
 
     void write(uint16_t address, uint16_t* arr, uint8_t num) {
@@ -131,52 +131,71 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("OK");
+  uint16_t address = 0x500, data[128], holder = 0, lastAddress;
+  uint8_t ch, dta[4], count128 = 0, count4 = 0;
+  
+  myCat.write(0, 0);
+  delay(100);
+  Serial.print("OK\n");
 
-  uint16_t address = 0, data[128], holder, lastAddress;
-  uint8_t ch, dta[4], count128 = 0, count4 = 0, countDigit = 0;
   while (1) {
     ch = Serial.read();
 
     if (ch == -1)
       continue;
-    if (ch < 0x3A && ch > 0x2F) {   // a number
-      address += (ch - 0x30) << (countDigit++ * 4);     // update address (0 <= countDigit <= 3)
+    if (((ch < 0x3A) && (ch > 0x2F))) {   // a hex number
+      address = address << 4;
+      address += ch - 0x30;     // update address (0 <= countDigit <= 3)
+      lastAddress = address;
+      continue;
+    } else if ((ch > 0x40) && (ch < 0x47)) {   // a hex number
+      address = address << 4;
+      address += ch - 55;     // update address (0 <= countDigit <= 3)
       lastAddress = address;
       continue;
     }
     if (ch == '\n') {   // a new line character
-      //if (count4 != 3)
-      //  Serial.println(count4);
-      Serial.write("OK\n");
+      if (count4 != 0)
+        Serial.println(count4);
+      Serial.print("OK@");
+      Serial.print(address, HEX);
+      Serial.print('\n');
       count4 = 0;
-      countDigit = 0;
       continue;
     }
     if (ch == '@') {    // .END character
-      myCat.write(address, data, ++count128);
+      myCat.write(address, data, count128);
       count128 = 0;
       address = 0;
       lastAddress = 0;
       continue;
     }
 
-    // a piece of encoded data
-    if(address % 128 == 0){
-      myCat.write(lastAddress, data, ++count128);
-      count128 = 0;
-      lastAddress = address;
+    if ( (ch > 0x59) && (ch < 0x70)) {
+      // a piece of encoded data
+      dta[count4] = ch;
+      count4++;
+      if (count4 == 4) {
+        count4 = 0;
+        holder = (dta[3] & 0x0F);
+        holder |= (dta[2] & 0x0F) << 4;
+        holder |= (dta[1] & 0x0F) << 8;
+        holder |= (dta[0] & 0x0F) << 12;
+        data[count128] = holder;
+        count128++;
+        address++;
+        Serial.print(count128);
+        Serial.print(":");
+        Serial.print(address, HEX);
+        Serial.print("->");
+        Serial.print(holder, BIN);
+        Serial.print(" ");
+      }
+      if (address % 128 == 0 && count128 != 0) {
+        myCat.write(lastAddress, data, count128);
+        count128 = 0;
+        lastAddress = address;
+      }
     }
-    dta[count4++] = ch;
-    if (count4 == 4) {
-      count4 = 0;
-      holder = dta[3] - 0x60;
-      holder += (dta[2] - 0x60) << 4;
-      holder += (dta[1] - 0x60) << 8;
-      holder += (dta[0] - 0x60) << 12;
-      data[count128++] = holder;
-    }
-
-    address++;
   }
 }

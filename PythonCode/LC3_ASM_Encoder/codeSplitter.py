@@ -66,7 +66,10 @@ def convertOne(fileName: str):
             write = "@\n"
             count = 0           # reset count
         elif lnIn[0:5] == ".ORIG":
-            write = lnIn[7:] + "\n"
+            if lnIn[6] == 'X':
+                write = lnIn[7:] + "\n"
+            elif lnIn[6] == '#':
+                write = hex(int(lnIn[7:]))[2:] + "\n"
             while len(write) < 5:
                 write = '0' + write
             count = 0           # reset count

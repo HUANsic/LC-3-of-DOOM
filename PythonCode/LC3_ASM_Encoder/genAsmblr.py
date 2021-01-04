@@ -39,7 +39,7 @@ class Assembler:
         "R4": "100",
         "R5": "101",
         "R6": "110",
-        "R7": "101"
+        "R7": "111"
     }
     trapDict = {
         "GETC": "X20",
@@ -53,13 +53,13 @@ class Assembler:
                   "JSRR", "LD", "LDI", "LDR", "LEA", "NOT", "RET", "RTI", "ST", "STI", "STR", "TRAP"]
     pseudocodeList = [".FILL", ".ORIG", ".END", ".BLKW", ".STRINGZ"]
 
-    debug = False
+    debug = True
 
     def ADD(self, dr, sr1, arg2):
         retStr = "0001"
         retStr += self.registerDict[dr]
         retStr += self.registerDict[sr1]
-        if arg2[0] == "#" or "X":
+        if arg2[0] in "#X":
             retStr += "1"
             intIn = int(arg2[1:]) if arg2[0] == "#" else \
                 (0 - int(arg2[1:], 16) if arg2[1] in "89ABCDEF" else int(arg2[1:], 16))
@@ -75,7 +75,7 @@ class Assembler:
         retStr = "0101"
         retStr += self.registerDict[dr]
         retStr += self.registerDict[sr1]
-        if arg2[0] == "#" or "X":
+        if arg2[0] in "#X":
             retStr += "1"
             intIn = int(arg2[1:]) if arg2[0] == "#" else \
                 (0 - int(arg2[1:], 16) if arg2[1] in "89ABCDEF" else int(arg2[1:], 16))
@@ -185,7 +185,7 @@ class Assembler:
         if code == ".END":      # skip
             return ".END", 0
         if code == ".ORIG":     # set PC
-            return ".ORIG " + arg0, (int(arg0[1:], 16) if arg0[0] == "X" else int(arg0[1:])) + 1
+            return ".ORIG " + arg0, (int(arg0[1:], 16) if arg0[0] == "X" else int(arg0[1:]))
         if code == ".FILL":
             if arg0[0] == "X" or "#":
                 return toTwosComp(int(arg0[1:], 16) if arg0[0] == "X" else int(arg0[1:]), 16, False), 1
@@ -201,14 +201,14 @@ class Assembler:
                     retStr += "\n0000000000000000"
                 return retStr, 1
         if code == ".STRINGZ":
-            string = arg0[1:-1].replace("\\N", "\n").replace("\\T", "\t").replace("\\R", "\r").replace("\\0", "\0")
+            string = arg0.replace("\"", "").replace("\\n", "\n").replace("\\t", "\t").replace("\\r", "\r").replace("\\0", "\0")
             retStr = ""
             for ch in string:
                 asciiCode = ord(ch)
                 retStr += toTwosComp(asciiCode, 16, False)
                 retStr += "\n"
             retStr += "0000000000000000"
-            return retStr, len(arg0) + 1
+            return retStr, len(string) + 1
 
         raise UnknownError(code)
 

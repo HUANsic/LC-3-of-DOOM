@@ -21,18 +21,23 @@ def cleanUp(fileName):
 
 
 def cleanLn(strIn: str) -> str:
+    stringStr = ""
     returnStr = ""
-    strIn = strIn.upper().strip()
+    strIn = strIn.strip()
     if strIn == "":
         return returnStr
+    if ";" in strIn:
+        index = strIn.index(";")
+        strIn = strIn[0:index]
+    if "\"" in strIn:
+        stringStr = strIn[strIn.index("\""):]
+        strIn = strIn[0:strIn.index("\"")]
     while "  " in strIn:
         strIn = strIn.replace("  ", " ")
     while ", " in strIn:
         strIn = strIn.replace(", ", ",")
-    if ";" in strIn:
-        index = strIn.index(";")
-        strIn = strIn[0:index]
-    returnStr = strIn
+    strIn = strIn.upper()
+    returnStr = strIn + stringStr
     returnStr += "\n" if returnStr != "" else ""
     return returnStr
 
