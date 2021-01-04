@@ -1,3 +1,5 @@
+
+class CAT {
 #define CE0 7
 #define CE1 6
 #define OE0 5
@@ -7,7 +9,6 @@
 
 #define MAX_WRITE_CYCLE_TIME 5
 
-class CAT {
   public:
     void init() {
       DDRL = 0xFF;
@@ -21,18 +22,23 @@ class CAT {
       setOutputEnable(0);
       setWriteEnable(0);
 
-      clear();
+      clear(0x500);
     }
 
-    void clear() {
+    void clear(uint16_t start) {
+      start = (start % 128 == 0) ? (start - start % 128) : start;
       uint16_t zeros[128];
       for (int i = 0; i < 128; i++) {
         zeros[i] = 0;
       }
-      write(0, zeros, 128);
-      for (uint16_t i = 128; i > 127; i += 128) {
+      write(start, zeros, 128);
+      for (uint16_t i = start + 128; i > 127; i += 128) {
         write(i, zeros, 128);
       }
+    }
+
+    void clearAll(){
+      clear(0);
     }
 
     void write(uint16_t addr, uint16_t data) {
