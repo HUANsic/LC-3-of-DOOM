@@ -83,12 +83,12 @@ class Assembler(object):
     lastKeyPressed: int = 0
     lastKeyValid: bool = False
 
-    debug = False
+    debug: bool
     debugAddress: int
     PC: int
 
     def __init__(self, machine: Virtual_Raw.virtual_lc3, kb: Virtual_Raw.Keyboard, csl: Virtual_Raw.Console,
-                 ram: Virtual_Raw.RAM, doDebug: bool = False):
+                 ram: Virtual_Raw.RAM, doDebug: bool):
         self.virtual_machine = machine
         self.virtual_kb = kb
         self.virtual_csl = csl
@@ -442,7 +442,7 @@ class Assembler(object):
                     elif len(parts) == 2 and not hasEnded:
                         if parts[1] == ".END":  # in pseudocode, it could only be ".END"
                             raise InvalidFormatError("\"" + line + "\"")
-                        elif parts[1] in self.opcodeList or parts[0] in self.trapDict:
+                        elif parts[1] in self.opcodeList or parts[1] in self.trapDict:
                             rawLabels[parts[0]] = address
                             address += 1
                         else:
@@ -483,15 +483,15 @@ class Assembler(object):
             if self.virtual_machine.PC == self.debugAddress:
                 break
             self.step()
-            self.updatePhysicalKeyboard()
+            # self.updatePhysicalKeyboard()     # under development
         if self.debug:
             print("\t\tEnded at", self.virtual_machine.PC - 1)
 
     def step(self):
         self.virtual_machine.control()
 
+    """
     def updatePhysicalKeyboard(self):
-
         # The event listener will be running in this block
         event = keyboard.Events().get(0.01)
         if self.debug:
@@ -501,7 +501,7 @@ class Assembler(object):
         self.virtual_kb.statusRegister[0] |= (1 if self.lastKeyValid else 0) << 15
         self.virtual_kb.dataRegister[0] = event.key
         self.virtual_kb.statusRegister[0] |= 0x8000
-
+        """
     # returns list of strings (cleaned user input)
     def cleanup(self, text: str) -> list:
         """ remove comments and extra whitespaces"""
@@ -510,7 +510,7 @@ class Assembler(object):
         lst = text.splitlines(False)
         lastLabel: str = ""  # the label if last label occupies a line alone
         for line in lst:
-            if line == "":
+            if len(line) == 0:
                 continue
             # add the last label if any
             line = lastLabel + " " + line
@@ -541,6 +541,9 @@ class Assembler(object):
                     # pick out the string
                     stringSeg = line[line.index("\""): line.index("\"", line.index("\"") + 1)]
                     line = line.replace(stringSeg, chr(129))
+            elif ";" in line:
+                # if there's still a comment, remove it
+                line = line[0:line.index(";")]
 
             # everything should be ready to be striped and turned into upper case now
             line = line.upper().strip()
@@ -548,7 +551,6 @@ class Assembler(object):
                 line = line.replace("  ", " ")
             while ", " in line:
                 line = line.replace(", ", ",")
-            line = line.upper()
 
             # put back the string, and \" as ", and replace \' with '
             if chr(129) in line:
@@ -558,6 +560,9 @@ class Assembler(object):
                     stringSeg = stringSeg.replace("\\\'", "\'")
                 line = line.replace(chr(129), stringSeg)
                 line = line.strip()
+
+            if len(line) == 0:
+                continue
 
             # check if it is a label alone
             if (" " not in line) and not (line in self.trapDict or line in self.opcodeList) and (line[0] != "."):
